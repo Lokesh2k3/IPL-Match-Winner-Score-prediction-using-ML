@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>CricIQ — IPL Analytics</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}"/>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="header-inner">
+    <div class="logo-group">
+      <span class="logo-bat">&#127959;</span>
+      <div>
+        <div class="logo-name">Cric<span>IQ</span></div>
+        <div class="logo-tag">IPL Analytics Engine</div>
+      </div>
+    </div>
+    <div class="header-center">
+      <button class="hnav-btn active" data-target="score">Score Predictor</button>
+      <button class="hnav-btn" data-target="win">Win Predictor</button>
+      <button class="hnav-btn" data-target="winprob">Win Probability</button>
+    </div>
+    <div class="header-live">
+      <span class="live-dot"></span>Model Ready
+    </div>
+  </div>
+</header>
+
+<main class="main">
+<div class="container">
+
+  <div class="tab-row">
+    <button class="tab-card active" data-target="score">
+      <div class="tab-ico">&#128202;</div>
+      <div>
+        <div class="tab-title">Score Predictor</div>
+        <div class="tab-sub">Live innings projection</div>
+      </div>
+    </button>
+    <button class="tab-card" data-target="win">
+      <div class="tab-ico">&#127942;</div>
+      <div>
+        <div class="tab-title">Win Predictor</div>
+        <div class="tab-sub">Pre-match probability</div>
+      </div>
+    </button>
+    <button class="tab-card" data-target="winprob">
+      <div class="tab-ico">&#127919;</div>
+      <div>
+        <div class="tab-title">Win Probability</div>
+        <div class="tab-sub">Live 2nd innings chase</div>
+      </div>
+    </button>
+  </div>
+
+  <!-- ═══ SCORE PREDICTOR ═══ -->
+  <section class="page active" id="page-score">
+    <div class="page-head">
+      <h1>Live Score Projection</h1>
+      <p>Predict the 1st-innings final score from current match state</p>
+      <div class="badges">
+        <span class="badge green">MAE 4.50 runs</span>
+        <span class="badge blue">R&#178; 0.966</span>
+        <span class="badge muted">Random Forest &middot; 300 Trees</span>
+      </div>
+    </div>
+
+    <div class="split-layout">
+      <div class="form-card">
+        <div class="form-heading">Match State</div>
+
+        <div class="field-row">
+          <div class="field">
+            <label>Batting Team</label>
+            <select id="s-batting">
+              <option value="">Select team&hellip;</option>
+              {% for t in teams %}<option>{{ t }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="field">
+            <label>Bowling Team</label>
+            <select id="s-bowling">
+              <option value="">Select team&hellip;</option>
+              {% for t in teams %}<option>{{ t }}</option>{% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Venue</label>
+          <select id="s-venue" onchange="autoFillVenueAvg()">
+            <option value="">Select venue&hellip;</option>
+            {% for v in venues %}<option>{{ v }}</option>{% endfor %}
+          </select>
+        </div>
+
+        <div class="field">
+          <label>Overs Completed</label>
+          <select id="s-overs">
+            <option value="1">1 over</option>
+            <option value="2">2 overs</option>
+            <option value="3">3 overs</option>
+            <option value="4">4 overs</option>
+            <option value="5">5 overs</option>
+            <option value="6">6 overs</option>
+            <option value="7">7 overs</option>
+            <option value="8">8 overs</option>
+            <option value="9">9 overs</option>
+            <option value="10" selected>10 overs</option>
+            <option value="11">11 overs</option>
+            <option value="12">12 overs</option>
+            <option value="13">13 overs</option>
+            <option value="14">14 overs</option>
+            <option value="15">15 overs</option>
+            <option value="16">16 overs</option>
+            <option value="17">17 overs</option>
+            <option value="18">18 overs</option>
+            <option value="19">19 overs</option>
+          </select>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label>Current Score</label>
+            <div class="input-addon">
+              <input type="number" id="s-score" placeholder="e.g. 95" min="1" max="300"/>
+              <span>runs</span>
+            </div>
+          </div>
+          <div class="field">
+            <label>Wickets Lost</label>
+            <select id="s-wickets">
+              {% for w in range(10) %}<option value="{{ w }}">{{ w }} wicket{{ 's' if w!=1 else '' }}</option>{% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <button class="predict-btn" onclick="submitScore()">
+          <span>&#9889;</span> Predict Final Score
+        </button>
+      </div>
+
+      <div class="result-pane" id="score-pane">
+        <div class="idle-state" id="score-idle">
+          <div class="idle-emoji">&#128202;</div>
+          <div class="idle-title">Ready to predict</div>
+          <div class="idle-hint">Fill in match details and click <strong>Predict Final Score</strong></div>
+        </div>
+        <div class="loading-state hidden" id="score-loading">
+          <div class="spinner"></div>
+          <span>Analysing match data&hellip;</span>
+        </div>
+        <div class="hidden" id="score-result">
+          <div class="score-hero">
+            <div class="score-eyebrow">Projected Final Score</div>
+            <div class="score-big" id="r-score">&#8212;</div>
+            <div class="score-range" id="r-range">Range &#8212; to &#8212;</div>
+          </div>
+          <div class="score-grid">
+            <div class="sg-item"><div class="sg-val" id="r-crr">&#8212;</div><div class="sg-key">Current RR</div></div>
+            <div class="sg-item"><div class="sg-val" id="r-rem">&#8212;</div><div class="sg-key">Overs Left</div></div>
+            <div class="sg-item"><div class="sg-val" id="r-runs">&#8212;</div><div class="sg-key">More Runs</div></div>
+            <div class="sg-item"><div class="sg-val" id="r-reqrr">&#8212;</div><div class="sg-key">Req. RR</div></div>
+          </div>
+          <div class="quality-block">
+            <div class="quality-label">Batting Quality Remaining &ensp;<span id="r-quality-pct">&#8212;</span></div>
+            <div class="quality-track"><div class="quality-bar" id="r-quality-bar"></div></div>
+          </div>
+          <div class="phase-tag" id="r-phase">&#8212;</div>
+          <div class="result-note">
+            &#8505;&#65039; Quality-aware model — accounts for wickets lost &amp; batting depth (MAE 4.50 runs).
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ WIN PREDICTOR ═══ -->
+  <section class="page" id="page-win">
+    <div class="page-head">
+      <h1>Win Probability Analysis</h1>
+      <p>Pre-match winning probability using H2H records, venue &amp; toss data</p>
+      <div class="badges">
+        <span class="badge green">~66% Accuracy</span>
+        <span class="badge blue">Logistic Regression</span>
+        <span class="badge muted">H2H &middot; Form &middot; Venue &middot; Toss</span>
+      </div>
+    </div>
+
+    <div class="split-layout">
+      <div class="form-card">
+        <div class="form-heading">Match Setup</div>
+
+        <div class="field-row">
+          <div class="field">
+            <label>Team 1</label>
+            <select id="w-team1" onchange="syncToss()">
+              <option value="">Select team&hellip;</option>
+              {% for t in teams %}<option>{{ t }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="field">
+            <label>Team 2</label>
+            <select id="w-team2" onchange="syncToss()">
+              <option value="">Select team&hellip;</option>
+              {% for t in teams %}<option>{{ t }}</option>{% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Venue</label>
+          <select id="w-venue">
+            <option value="">Select venue&hellip;</option>
+            {% for v in venues %}<option>{{ v }}</option>{% endfor %}
+          </select>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label>Toss Winner</label>
+            <select id="w-toss"><option value="">Select teams first&hellip;</option></select>
+          </div>
+          <div class="field">
+            <label>Toss Decision</label>
+            <select id="w-decision">
+              <option value="bat">Bat First</option>
+              <option value="field">Field First</option>
+            </select>
+          </div>
+        </div>
+
+        <button class="predict-btn" onclick="submitWin()">
+          <span>&#127942;</span> Predict Winner
+        </button>
+      </div>
+
+      <div class="result-pane" id="win-pane">
+        <div class="idle-state" id="win-idle">
+          <div class="idle-emoji">&#127942;</div>
+          <div class="idle-title">Ready to predict</div>
+          <div class="idle-hint">Select teams, venue and toss details</div>
+        </div>
+        <div class="loading-state hidden" id="win-loading">
+          <div class="spinner"></div>
+          <span>Running probability model&hellip;</span>
+        </div>
+        <div class="hidden" id="win-result">
+          <div class="win-header">
+            <div>
+              <div class="win-eyebrow">Predicted Winner</div>
+              <div class="win-name" id="w-winner">&#8212;</div>
+            </div>
+            <div class="conf-chip" id="w-conf">&#8212;</div>
+          </div>
+
+          <div class="prob-row" id="wr1">
+            <div class="prob-meta">
+              <div class="prob-team-info">
+                <div class="team-chip" id="wc1">T1</div>
+                <div>
+                  <div class="pteam-name" id="wn1">Team 1</div>
+                  <div class="pteam-sub">Win Probability</div>
+                </div>
+              </div>
+              <div class="prob-num" id="wp1">&#8212;</div>
+            </div>
+            <div class="prob-track"><div class="prob-fill" id="pb1"></div></div>
+          </div>
+
+          <div class="vs-sep"><span>VS</span></div>
+
+          <div class="prob-row" id="wr2">
+            <div class="prob-meta">
+              <div class="prob-team-info">
+                <div class="team-chip" id="wc2">T2</div>
+                <div>
+                  <div class="pteam-name" id="wn2">Team 2</div>
+                  <div class="pteam-sub">Win Probability</div>
+                </div>
+              </div>
+              <div class="prob-num" id="wp2">&#8212;</div>
+            </div>
+            <div class="prob-track"><div class="prob-fill" id="pb2"></div></div>
+          </div>
+
+          <div class="conf-dots-wrap">
+            <div class="conf-dots-label">Prediction Confidence</div>
+            <div class="conf-dots" id="conf-dots"></div>
+          </div>
+
+          <div class="result-note">
+            &#8505;&#65039; Based on H2H record, home advantage, venue chasing rate &amp; toss analysis.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ WIN PROBABILITY (LIVE 2nd INNINGS) ═══ -->
+  <section class="page" id="page-winprob">
+    <div class="page-head">
+      <h1>Live Win Probability</h1>
+      <p>2nd innings chase — real-time probability based on match situation</p>
+      <div class="badges">
+        <span class="badge green">XGBoost Classifier</span>
+        <span class="badge blue">ROC-AUC 0.856</span>
+        <span class="badge muted">H2H &middot; Venue Chase Rate &middot; RRR vs CRR</span>
+      </div>
+    </div>
+
+    <div class="split-layout">
+      <div class="form-card">
+        <div class="form-heading">Chase Situation</div>
+
+        <div class="field-row">
+          <div class="field">
+            <label>Batting Team (Chasing)</label>
+            <select id="wp-batting">
+              <option value="">Select team&hellip;</option>
+              {% for t in teams %}<option>{{ t }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="field">
+            <label>Bowling Team (Defending)</label>
+            <select id="wp-bowling">
+              <option value="">Select team&hellip;</option>
+              {% for t in teams %}<option>{{ t }}</option>{% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Venue</label>
+          <select id="wp-venue">
+            <option value="">Select venue&hellip;</option>
+            {% for v in venues %}<option>{{ v }}</option>{% endfor %}
+          </select>
+        </div>
+
+        <div class="field">
+          <label>Target (1st Innings Score + 1)</label>
+          <div class="input-addon">
+            <input type="number" id="wp-target" placeholder="e.g. 185" min="1" max="400"/>
+            <span>runs</span>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Overs Completed</label>
+          <select id="wp-overs">
+            <option value="1">1 over</option>
+            <option value="2">2 overs</option>
+            <option value="3">3 overs</option>
+            <option value="4">4 overs</option>
+            <option value="5">5 overs</option>
+            <option value="6">6 overs</option>
+            <option value="7">7 overs</option>
+            <option value="8">8 overs</option>
+            <option value="9">9 overs</option>
+            <option value="10" selected>10 overs</option>
+            <option value="11">11 overs</option>
+            <option value="12">12 overs</option>
+            <option value="13">13 overs</option>
+            <option value="14">14 overs</option>
+            <option value="15">15 overs</option>
+            <option value="16">16 overs</option>
+            <option value="17">17 overs</option>
+            <option value="18">18 overs</option>
+            <option value="19">19 overs</option>
+          </select>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label>Current Score</label>
+            <div class="input-addon">
+              <input type="number" id="wp-score" placeholder="e.g. 95" min="0" max="400"/>
+              <span>runs</span>
+            </div>
+          </div>
+          <div class="field">
+            <label>Wickets Lost</label>
+            <select id="wp-wickets">
+              {% for w in range(10) %}<option value="{{ w }}">{{ w }} wicket{{ 's' if w!=1 else '' }}</option>{% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <button class="predict-btn" onclick="submitWinProb()">
+          <span>&#127919;</span> Predict Win Probability
+        </button>
+      </div>
+
+      <div class="result-pane" id="winprob-pane">
+        <div class="idle-state" id="winprob-idle">
+          <div class="idle-emoji">&#127919;</div>
+          <div class="idle-title">Ready to predict</div>
+          <div class="idle-hint">Enter the 2nd innings chase situation and click <strong>Predict Win Probability</strong></div>
+        </div>
+        <div class="loading-state hidden" id="winprob-loading">
+          <div class="spinner"></div>
+          <span>Calculating win probability&hellip;</span>
+        </div>
+        <div class="hidden" id="winprob-result">
+          <div class="win-header">
+            <div>
+              <div class="win-eyebrow">Predicted Winner</div>
+              <div class="win-name" id="wp-winner">&#8212;</div>
+            </div>
+            <div class="conf-chip" id="wp-conf">&#8212;</div>
+          </div>
+
+          <!-- Chasing team probability -->
+          <div class="prob-row" id="wpr1">
+            <div class="prob-meta">
+              <div class="prob-team-info">
+                <div class="team-chip" id="wpc1">BAT</div>
+                <div>
+                  <div class="pteam-name" id="wpn1">Batting Team</div>
+                  <div class="pteam-sub">Chase Win Probability</div>
+                </div>
+              </div>
+              <div class="prob-num" id="wpp1">&#8212;</div>
+            </div>
+            <div class="prob-track"><div class="prob-fill" id="wpb1"></div></div>
+          </div>
+
+          <div class="vs-sep"><span>VS</span></div>
+
+          <!-- Defending team probability -->
+          <div class="prob-row" id="wpr2">
+            <div class="prob-meta">
+              <div class="prob-team-info">
+                <div class="team-chip" id="wpc2">BWL</div>
+                <div>
+                  <div class="pteam-name" id="wpn2">Bowling Team</div>
+                  <div class="pteam-sub">Defend Win Probability</div>
+                </div>
+              </div>
+              <div class="prob-num" id="wpp2">&#8212;</div>
+            </div>
+            <div class="prob-track"><div class="prob-fill" id="wpb2"></div></div>
+          </div>
+
+          <!-- Live chase stats grid -->
+          <div class="score-grid" style="margin-top:1.2rem;">
+            <div class="sg-item"><div class="sg-val" id="wp-r-req">&#8212;</div><div class="sg-key">Runs Needed</div></div>
+            <div class="sg-item"><div class="sg-val" id="wp-r-balls">&#8212;</div><div class="sg-key">Balls Left</div></div>
+            <div class="sg-item"><div class="sg-val" id="wp-r-rrr">&#8212;</div><div class="sg-key">Req. RR</div></div>
+            <div class="sg-item"><div class="sg-val" id="wp-r-crr">&#8212;</div><div class="sg-key">Current RR</div></div>
+          </div>
+
+          <div class="conf-dots-wrap">
+            <div class="conf-dots-label">Prediction Confidence</div>
+            <div class="conf-dots" id="wp-conf-dots"></div>
+          </div>
+
+          <div class="result-note">
+            &#8505;&#65039; Based on RRR vs CRR pressure, wickets remaining, venue chase history &amp; H2H record.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+</main>
+
+<footer class="site-footer">
+  <div class="footer-inner">
+    <span>CricIQ &middot; IPL Match Analytics</span>
+    <span class="sep">&middot;</span>
+    <span>Score Model: MAE 4.50 &middot; R&#178; 0.966</span>
+    <span class="sep">&middot;</span>
+    <span>Win Model: ~66% Accuracy (5-Fold CV)</span>
+    <span class="sep">&middot;</span>
+    <span>Win Probability: ROC-AUC 0.856</span>
+  </div>
+</footer>
+
+<script>const VENUE_AVG = {{ venue_avg | tojson }};</script>
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
