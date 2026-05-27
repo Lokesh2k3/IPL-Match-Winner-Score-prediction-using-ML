@@ -122,3 +122,11 @@ http://127.0.0.1:5000
 
 ## Score Prediction
 ![Score Prediction](screenshots/3.png)
+
+
+
+## Author
+Lokesh Kumar Matam 
+Final Year B.Tech Project  
+JNTUA College of Engineering Kalikiri
+lokeshkmr2k3@gmail.com
