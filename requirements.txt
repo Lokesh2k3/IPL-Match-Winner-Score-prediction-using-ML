@@ -1,0 +1,12 @@
+Flask
+pandas
+numpy
+scikit-learn
+matplotlib
+xgboost
+lightgbm
+joblib
+pickle-mixin
+jupyter
+notebook
+streamlit
