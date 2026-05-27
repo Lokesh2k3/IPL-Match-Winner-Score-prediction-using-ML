@@ -106,3 +106,19 @@ python app.py
 ## Step 7: Open In Browser
 
 http://127.0.0.1:5000
+
+
+# Screenshots
+
+## Home Interface
+![Home Interface](screenshots/1.png)
+
+---
+
+## Winner Prediction
+![Winner Prediction](screenshots/2.png)
+
+---
+
+## Score Prediction
+![Score Prediction](screenshots/3.png)
